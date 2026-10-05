@@ -137,12 +137,6 @@ menu = st.sidebar.radio(
     ]
 )
 
-st.sidebar.markdown("---")
-st.sidebar.info("""
-**Ghi chú nghiệp vụ:**
-Hệ thống sử dụng dữ liệu đối chuẩn độc lập để kiểm chứng các tuyên bố chào bán trái phiếu của CĐT. Tuyệt đối không cần upload tài liệu mật.
-""")
-
 # ==============================================================================
 # TAB 1: THẨM ĐỊNH & ĐỐI CHUẨN HỒ SƠ DỰ ÁN MỚI
 # ==============================================================================
@@ -150,12 +144,11 @@ if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
     st.markdown('<div class="main-header">🎯 THẨM ĐỊNH & ĐỐI CHUẨN DỰ ÁN PHỤC VỤ XẾP HẠNG TÍN DỤNG</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Nhập tên thương mại dự án -> Bấm nút Check để hệ thống tự động kiểm tra CSDL và trích xuất hồ sơ</div>', unsafe_allow_html=True)
 
-    # Khởi tạo session_state lưu trữ trạng thái kiểm tra
+    # Khởi tạo session_state: MẶC ĐỊNH LUÔN RỖNG KHI MỞ TRANG HOẶC F5
     if "matched_project" not in st.session_state:
-        # Mặc định nạp thử dự án Vinhomes Green City Hậu Nghĩa
         st.session_state.matched_project = None
     if "project_search_name" not in st.session_state:
-        st.session_state.project_search_name = "Vinhomes Green City Hậu Nghĩa"
+        st.session_state.project_search_name = ""
     if "checked_done" not in st.session_state:
         st.session_state.checked_done = False
 
@@ -193,7 +186,7 @@ if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
             return best_p
         return None
 
-    # KHUNG NHẬP TÊN DỰ ÁN VÀ NÚT CHECK
+    # KHUNG NHẬP TÊN DỰ ÁN VÀ NÚT CHECK (MẶC ĐỊNH ĐỂ TRỐNG HOÀN TOÀN)
     st.markdown("### 🔍 Bước 1: Nhập Tên Dự Án Cần Thẩm Định")
     col_input, col_btn = st.columns([4, 1])
 
@@ -214,20 +207,21 @@ if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
                "[Vinhomes Green City Hậu Nghĩa] | [Eco Retreat Long An] | [Waterpoint] | "
                "[The Sol City] | [Mizuki Park] | [Golden City Tây Ninh]")
 
-    # Xử lý khi nhấn nút Check
+    # Xử lý khi nhấn nút Check: Chỉ kiểm tra khi người dùng thực sự bấm nút
     if btn_check:
-        matched = search_project_by_name(project_input)
-        st.session_state.project_search_name = project_input
-        st.session_state.matched_project = matched
-        st.session_state.checked_done = True
-
-    # Nạp mặc định nếu mới vào lần đầu
-    if not st.session_state.checked_done and not st.session_state.matched_project:
-        st.session_state.matched_project = search_project_by_name("Vinhomes Green City Hậu Nghĩa")
-        st.session_state.checked_done = True
+        if not project_input.strip():
+            st.warning("⚠️ Vui lòng nhập tên thương mại dự án trước khi bấm Check!")
+            st.session_state.matched_project = None
+            st.session_state.checked_done = False
+        else:
+            matched = search_project_by_name(project_input)
+            st.session_state.project_search_name = project_input
+            st.session_state.matched_project = matched
+            st.session_state.checked_done = True
 
     p = st.session_state.matched_project
 
+    # NẾU ĐÃ CHECK VÀ TÌM THẤY DỰ ÁN -> HIỂN THỊ FORM GỌN GÀNG (MỤC 1 & MỤC 2)
     if p:
         st.success(f"✅ ĐÃ TÌM THẤY THÔNG TIN DỰ ÁN: **{p['commercial_name']}** (Mã: `{p['id']}`)")
 
@@ -277,92 +271,20 @@ if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
             lat = float(p["latitude"] or 10.75)
             lon = float(p["longitude"] or 106.55)
 
-        # =========================================================================
-        # BẢNG 4: GIÁ BÁN DỰ KIẾN CHI TIẾT THEO PHÂN LOẠI & NHÓM TÒA (THEO YÊU CẦU ẢNH 1)
-        # =========================================================================
-        st.markdown("---")
-        st.markdown(f"### 📋 Bảng 4: Giá bán dự kiến sản phẩm văn phòng và thương mại – dịch vụ ({p['commercial_name']})")
-        st.caption("Đơn vị: Triệu đồng/m² | Nguồn: Phương án chào bán CĐT & Hồ sơ tín dụng")
-
-        current_pricing = execute_query("""
-            SELECT category, building_group, initial_price, progress_price, loan_price, early_price, avg_price, notes
-            FROM project_detailed_pricing
-            WHERE project_id = ?
-        """, (p["id"],))
-
-        if current_pricing:
-            df_cur = pd.DataFrame(current_pricing)
-            df_cur_display = df_cur[[
-                "category", "building_group", "initial_price", "progress_price", "loan_price", "early_price", "avg_price"
-            ]].rename(columns={
-                "category": "Phân loại",
-                "building_group": "Nhóm tòa / Phân khu",
-                "initial_price": "Giá ban đầu",
-                "progress_price": "Theo tiến độ",
-                "loan_price": "Vay 70%",
-                "early_price": "Trả sớm",
-                "avg_price": "Bình quân"
-            })
-            for col in ["Giá ban đầu", "Theo tiến độ", "Vay 70%", "Trả sớm", "Bình quân"]:
-                df_cur_display[col] = df_cur_display[col].map(lambda x: f"{x:,.2f}")
-
-            st.dataframe(df_cur_display, use_container_width=True, hide_index=True)
-        else:
-            st.info("Dự án này là phân khúc đất nền/nhà phố đơn lẻ, không có cơ cấu tháp cao tầng phức hợp.")
-
-        # =========================================================================
-        # BẢNG ĐỐI CHUẨN CHI TIẾT VỚI CÁC DỰ ÁN ĐỐI THỦ CÙNG ĐỊA BÀN
-        # =========================================================================
-        peer_pricing = execute_query("""
-            SELECT p.id, p.commercial_name, p.district, dp.category, dp.building_group,
-                   dp.initial_price, dp.progress_price, dp.loan_price, dp.early_price, dp.avg_price
-            FROM projects p
-            JOIN project_detailed_pricing dp ON p.id = dp.project_id
-            WHERE p.district = ? AND p.id != ?
-            ORDER BY p.commercial_name, dp.category
-        """, (p["district"], p["id"]))
-
-        if not peer_pricing:
-            peer_pricing = execute_query("""
-                SELECT p.id, p.commercial_name, p.district, dp.category, dp.building_group,
-                       dp.initial_price, dp.progress_price, dp.loan_price, dp.early_price, dp.avg_price
-                FROM projects p
-                JOIN project_detailed_pricing dp ON p.id = dp.project_id
-                WHERE p.province = ? AND p.id != ?
-                ORDER BY p.commercial_name, dp.category
-            """, (p["province"], p["id"]))
-
-        if peer_pricing:
-            with st.expander(f"🏢 BẢNG GIÁ CHI TIẾT TƯƠNG TỰ CỦA CÁC DỰ ÁN ĐỐI THỦ CÙNG ĐỊA BÀN ({p['district']}, {p['province']})", expanded=True):
-                st.caption("Dùng để so sánh trực diện giá Văn phòng & Thương mại - dịch vụ của dự án với các đối thủ cạnh tranh lân cận")
-                df_peer = pd.DataFrame(peer_pricing)
-                peer_names = df_peer["commercial_name"].unique().tolist()
-                for peer_name in peer_names:
-                    st.markdown(f"**• Bảng giá đối thủ: {peer_name}**")
-                    df_sub = df_peer[df_peer["commercial_name"] == peer_name][[
-                        "category", "building_group", "initial_price", "progress_price", "loan_price", "early_price", "avg_price"
-                    ]].rename(columns={
-                        "category": "Phân loại",
-                        "building_group": "Nhóm tòa / Phân khu",
-                        "initial_price": "Giá ban đầu",
-                        "progress_price": "Theo tiến độ",
-                        "loan_price": "Vay 70%",
-                        "early_price": "Trả sớm",
-                        "avg_price": "Bình quân"
-                    })
-                    for col in ["Giá ban đầu", "Theo tiến độ", "Vay 70%", "Trả sớm", "Bình quân"]:
-                        df_sub[col] = df_sub[col].map(lambda x: f"{x:,.2f}")
-                    st.dataframe(df_sub, use_container_width=True, hide_index=True)
-
         st.markdown("---")
         btn_run = st.button("🚀 BẮT ĐẦU ĐỐI CHUẨN ĐỘC LẬP & TẠO BÁO CÁO TÍN DỤNG", type="primary", use_container_width=True)
 
-    else:
+    elif st.session_state.checked_done and not p:
         st.warning(f"⚠️ Chưa tìm thấy dự án **'{project_input}'** trong CSDL nội bộ. Bạn có thể kiểm tra lại tên gõ đúng hoặc thêm nhanh dự án mới tại Tab **'📁 Cơ sở Dữ liệu Master'**.")
+        btn_run = False
+    else:
         btn_run = False
 
 
-    if btn_run:
+    # =========================================================================
+    # KHI BẤM NÚT "BẮT ĐẦU ĐỐI CHUẨN": HIỂN THỊ TOÀN BỘ KẾT QUẢ & BẢNG GIÁ MỤC 2
+    # =========================================================================
+    if btn_run and p:
         with st.spinner("Đang truy vấn cơ sở dữ liệu đối chuẩn và phân tích rủi ro..."):
             report = generate_bond_due_diligence_report(
                 project_name=project_name,
@@ -407,6 +329,85 @@ if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        # Khuyến nghị Tài sản bảo đảm
+        st.warning(f"🛡️ **Khuyến nghị Tài sản bảo đảm Trái phiếu:** {report['collateral_recommendation']}")
+
+        # =========================================================================
+        # BẢNG 4 & BẢNG GIÁ ĐỐI THỦ: ĐƯỢC ĐƯA VÀO ĐÂY SAU KHI BẤM ĐỐI CHUẨN
+        # =========================================================================
+        st.markdown("---")
+        st.subheader("📋 BẢNG GIÁ CHI TIẾT SẢN PHẨM & ĐỐI CHUẨN ĐỊA PHƯƠNG")
+
+        current_pricing = execute_query("""
+            SELECT category, building_group, initial_price, progress_price, loan_price, early_price, avg_price, notes
+            FROM project_detailed_pricing
+            WHERE project_id = ?
+        """, (p["id"],))
+
+        if current_pricing:
+            st.markdown(f"**Bảng 4: Giá bán dự kiến sản phẩm văn phòng và thương mại – dịch vụ ({p['commercial_name']})**")
+            st.caption("Đơn vị: Triệu đồng/m² | Nguồn: Phương án chào bán CĐT & Hồ sơ tín dụng")
+            df_cur = pd.DataFrame(current_pricing)
+            df_cur_display = df_cur[[
+                "category", "building_group", "initial_price", "progress_price", "loan_price", "early_price", "avg_price"
+            ]].rename(columns={
+                "category": "Phân loại",
+                "building_group": "Nhóm tòa / Phân khu",
+                "initial_price": "Giá ban đầu",
+                "progress_price": "Theo tiến độ",
+                "loan_price": "Vay 70%",
+                "early_price": "Trả sớm",
+                "avg_price": "Bình quân"
+            })
+            for col in ["Giá ban đầu", "Theo tiến độ", "Vay 70%", "Trả sớm", "Bình quân"]:
+                df_cur_display[col] = df_cur_display[col].map(lambda x: f"{x:,.2f}")
+
+            st.dataframe(df_cur_display, use_container_width=True, hide_index=True)
+        else:
+            st.info("Dự án này là phân khúc đất nền/nhà phố đơn lẻ, không có cơ cấu tháp cao tầng phức hợp.")
+
+        # Bảng đối chuẩn chi tiết đối thủ cùng địa bàn
+        peer_pricing = execute_query("""
+            SELECT p.id, p.commercial_name, p.district, dp.category, dp.building_group,
+                   dp.initial_price, dp.progress_price, dp.loan_price, dp.early_price, dp.avg_price
+            FROM projects p
+            JOIN project_detailed_pricing dp ON p.id = dp.project_id
+            WHERE p.district = ? AND p.id != ?
+            ORDER BY p.commercial_name, dp.category
+        """, (p["district"], p["id"]))
+
+        if not peer_pricing:
+            peer_pricing = execute_query("""
+                SELECT p.id, p.commercial_name, p.district, dp.category, dp.building_group,
+                       dp.initial_price, dp.progress_price, dp.loan_price, dp.early_price, dp.avg_price
+                FROM projects p
+                JOIN project_detailed_pricing dp ON p.id = dp.project_id
+                WHERE p.province = ? AND p.id != ?
+                ORDER BY p.commercial_name, dp.category
+            """, (p["province"], p["id"]))
+
+        if peer_pricing:
+            with st.expander(f"🏢 BẢNG GIÁ CHI TIẾT TƯƠNG TỰ CỦA CÁC DỰ ÁN ĐỐI THỦ CÙNG ĐỊA BÀN ({p['district']}, {p['province']})", expanded=True):
+                st.caption("Dùng để so sánh trực diện giá Văn phòng & Thương mại - dịch vụ của dự án với các đối thủ cạnh tranh lân cận")
+                df_peer = pd.DataFrame(peer_pricing)
+                peer_names = df_peer["commercial_name"].unique().tolist()
+                for peer_name in peer_names:
+                    st.markdown(f"**• Bảng giá đối thủ: {peer_name}**")
+                    df_sub = df_peer[df_peer["commercial_name"] == peer_name][[
+                        "category", "building_group", "initial_price", "progress_price", "loan_price", "early_price", "avg_price"
+                    ]].rename(columns={
+                        "category": "Phân loại",
+                        "building_group": "Nhóm tòa / Phân khu",
+                        "initial_price": "Giá ban đầu",
+                        "progress_price": "Theo tiến độ",
+                        "loan_price": "Vay 70%",
+                        "early_price": "Trả sớm",
+                        "avg_price": "Bình quân"
+                    })
+                    for col in ["Giá ban đầu", "Theo tiến độ", "Vay 70%", "Trả sớm", "Bình quân"]:
+                        df_sub[col] = df_sub[col].map(lambda x: f"{x:,.2f}")
+                    st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
         # Khuyến nghị Tài sản bảo đảm
         st.warning(f"🛡️ **Khuyến nghị Tài sản bảo đảm Trái phiếu:** {report['collateral_recommendation']}")
