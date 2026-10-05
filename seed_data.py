@@ -31,6 +31,15 @@ def seed_all():
             "https://sxd.longan.gov.vn"
         ),
         (
+            "LA-BL-03", "KĐT Eco Retreat Long An (Ecopark)", "Khu đô thị sinh thái thương mại du lịch xã Thanh Phú", "Tập đoàn Ecopark & Công ty DB",
+            "Long An", "Bến Lức", "Xã Thanh Phú", "Xã Thanh Phú, Huyện Bến Lức, Tỉnh Long An",
+            10.6582, 106.5120, 220.0, 4950, "Biệt thự khoáng nóng, Nhà phố sinh thái, Shophouse",
+            "L3", 0, 0, 0, 55.0, 42.0, 65.0,
+            "Tiếp giáp Cao tốc TP.HCM - Trung Lương và Vành Đai 3, cách ranh giới Bình Chánh chỉ 5km",
+            "Đã có quyết định chấp thuận nhà đầu tư (UBND tỉnh Long An duyệt 2023), đang giai đoạn đền bù GPMB và hoàn thiện 1/500, chưa nộp tiền sử dụng đất.",
+            "https://longan.gov.vn"
+        ),
+        (
             "LA-DH-01", "Vinhomes Green City (Hậu Nghĩa)", "Khu đô thị mới Hậu Nghĩa - Đức Hòa", "Tập đoàn Vingroup",
             "Long An", "Đức Hòa", "Thị trấn Hậu Nghĩa & Xã Đức Lập Thượng", "Huyện Đức Hòa, Tỉnh Long An",
             10.9023, 106.4255, 197.2, 5170, "Biệt thự, Nhà liền kề, Shophouse, Căn hộ cao tầng",

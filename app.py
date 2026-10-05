@@ -103,73 +103,145 @@ Hệ thống sử dụng dữ liệu đối chuẩn độc lập để kiểm ch
 # ==============================================================================
 if menu == "🎯 Thẩm định & Đối chuẩn Hồ sơ":
     st.markdown('<div class="main-header">🎯 THẨM ĐỊNH & ĐỐI CHUẨN DỰ ÁN PHỤC VỤ XẾP HẠNG TÍN DỤNG</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Kiểm chứng độc lập các tuyên bố "Dự án là nhất" của Chủ đầu tư trong phương án phát hành trái phiếu</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Nhập tên thương mại dự án -> Bấm nút Check để hệ thống tự động kiểm tra CSDL và trích xuất hồ sơ</div>', unsafe_allow_html=True)
 
-    col_in1, col_in2 = st.columns([1, 1])
+    # Khởi tạo session_state lưu trữ trạng thái kiểm tra
+    if "matched_project" not in st.session_state:
+        # Mặc định nạp thử dự án Vinhomes Green City Hậu Nghĩa
+        st.session_state.matched_project = None
+    if "project_search_name" not in st.session_state:
+        st.session_state.project_search_name = "Vinhomes Green City Hậu Nghĩa"
+    if "checked_done" not in st.session_state:
+        st.session_state.checked_done = False
 
-    with col_in1:
-        st.subheader("1. Thông tin Dự án CĐT Tuyên bố")
-        project_name = st.text_input("Tên thương mại dự án:", value="KĐT Phúc An Western Lake")
-        developer = st.text_input("Chủ đầu tư / Pháp nhân phát hành:", value="Tập đoàn BĐS Đô Thị Mới")
+    # Hàm tìm kiếm thông minh (Fuzzy Search)
+    def search_project_by_name(query_name: str):
+        if not query_name:
+            return None
+        projects = execute_query("SELECT * FROM projects")
+        q = query_name.lower().strip()
+        
+        # 1. Khớp chính xác hoặc chuỗi con
+        for p in projects:
+            c_name = p["commercial_name"].lower()
+            l_name = (p["legal_name"] or "").lower()
+            if q in c_name or c_name in q or (l_name and (q in l_name or l_name in q)):
+                return p
+                
+        # 2. Khớp theo từ khóa cốt lõi
+        import re
+        def clean_words(text):
+            words = set(re.sub(r'[\(\)\-\,\.\+]', ' ', text.lower()).split())
+            return words - {"kđt", "kdc", "dự", "án", "khu", "đô", "thị", "tập", "đoàn"}
 
-        p_col1, p_col2 = st.columns(2)
-        with p_col1:
-            province = st.selectbox("Tỉnh / Thành phố:", ["Long An", "TP.HCM", "Tây Ninh"], index=0)
-        with p_col2:
-            if province == "Long An":
-                district_opts = ["Bến Lức", "Đức Hòa", "Cần Giuộc", "Cần Đước", "Tân An"]
-            elif province == "TP.HCM":
-                district_opts = ["Bình Chánh", "Củ Chi", "Hóc Môn", "Nhà Bè", "TP. Thủ Đức"]
-            else:
-                district_opts = ["Trảng Bàng", "Gò Dầu", "TP. Tây Ninh", "Hòa Thành"]
-            district = st.selectbox("Quận / Huyện:", district_opts, index=0)
+        q_words = clean_words(query_name)
+        best_p = None
+        max_overlap = 0
+        for p in projects:
+            p_words = clean_words(p["commercial_name"])
+            overlap = len(q_words.intersection(p_words))
+            if overlap > max_overlap:
+                max_overlap = overlap
+                best_p = p
 
-        s_col1, s_col2 = st.columns(2)
-        with s_col1:
-            total_area_ha = st.number_input("Quy mô diện tích CĐT khai (ha):", min_value=0.5, max_value=2000.0, value=35.0, step=1.0)
-        with s_col2:
-            total_units = st.number_input("Tổng số sản phẩm (căn/nền):", min_value=10, max_value=100000, value=1600, step=50)
+        if max_overlap >= 1:
+            return best_p
+        return None
 
-        declared_price = st.number_input("Giá bán CĐT kỳ vọng / chào bán (triệu VNĐ/m²):", min_value=5.0, max_value=300.0, value=42.0, step=0.5)
+    # KHUNG NHẬP TÊN DỰ ÁN VÀ NÚT CHECK
+    st.markdown("### 🔍 Bước 1: Nhập Tên Dự Án Cần Thẩm Định")
+    col_input, col_btn = st.columns([4, 1])
 
-    with col_in2:
-        st.subheader("2. Pháp lý & Vị trí Thực tế")
-        legal_stage = st.selectbox(
-            "Nấc thang pháp lý CĐT tự khai:",
-            list(LEGAL_STAGES_INFO.keys()),
-            format_func=lambda x: f"{x} - {LEGAL_STAGES_INFO[x]['name']}",
-            index=2 # Mặc định L3
+    with col_input:
+        project_input = st.text_input(
+            "Tên thương mại dự án:",
+            value=st.session_state.project_search_name,
+            placeholder="Ví dụ: Vinhomes Green City Hậu Nghĩa, Eco Retreat Long An, Waterpoint..."
         )
 
-        st.caption(f"ℹ️ {LEGAL_STAGES_INFO[legal_stage]['desc']}")
+    with col_btn:
+        st.write("")
+        st.write("")
+        btn_check = st.button("🔎 CHECK INFO", type="primary", use_container_width=True)
 
-        st.markdown("**Kiểm tra thực tế giấy tờ bổ trợ:**")
-        chk_land_fee = st.checkbox("Đã có Biên lai / Thông báo nộp TIỀN SỬ DỤNG ĐẤT?", value=False)
-        chk_gpxd = st.checkbox("Đã có Giấy phép Xây dựng (GPXD)?", value=False)
-        chk_sale = st.checkbox("Có Văn bản đủ điều kiện mở bán của Sở Xây dựng?", value=False)
+    # Gợi ý bấm nhanh tên dự án phổ biến
+    st.caption("💡 **Gợi ý chọn nhanh:** "
+               "[Vinhomes Green City Hậu Nghĩa] | [Eco Retreat Long An] | [Waterpoint] | "
+               "[The Sol City] | [Mizuki Park] | [Golden City Tây Ninh]")
 
-        st.markdown("**Tọa độ địa lý (hoặc lấy mặc định theo Huyện):**")
-        # Tọa độ gợi ý theo huyện
-        coord_defaults = {
-            "Bến Lức": (10.6358, 106.4789),
-            "Đức Hòa": (10.8876, 106.5021),
-            "Cần Giuộc": (10.6321, 106.6085),
-            "Bình Chánh": (10.6865, 106.5742),
-            "Củ Chi": (10.9321, 106.4876),
-            "TP. Thủ Đức": (10.8456, 106.8378),
-            "Trảng Bàng": (11.0354, 106.3687),
-            "Gò Dầu": (11.1123, 106.3125),
-            "TP. Tây Ninh": (11.3124, 106.0987)
-        }
-        default_lat, default_lon = coord_defaults.get(district, (10.75, 106.55))
-        c_lat, c_lon = st.columns(2)
-        with c_lat:
-            lat = st.number_input("Vĩ độ (Latitude):", value=default_lat, format="%.4f")
-        with c_lon:
-            lon = st.number_input("Kinh độ (Longitude):", value=default_lon, format="%.4f")
+    # Xử lý khi nhấn nút Check
+    if btn_check:
+        matched = search_project_by_name(project_input)
+        st.session_state.project_search_name = project_input
+        st.session_state.matched_project = matched
+        st.session_state.checked_done = True
 
-    st.markdown("---")
-    btn_run = st.button("🚀 BẮT ĐẦU ĐỐI CHUẨN ĐỘC LẬP & TẠO BÁO CÁO TÍN DỤNG", type="primary", use_container_width=True)
+    # Nạp mặc định nếu mới vào lần đầu
+    if not st.session_state.checked_done and not st.session_state.matched_project:
+        st.session_state.matched_project = search_project_by_name("Vinhomes Green City Hậu Nghĩa")
+        st.session_state.checked_done = True
+
+    p = st.session_state.matched_project
+
+    if p:
+        st.success(f"✅ ĐÃ TÌM THẤY THÔNG TIN DỰ ÁN: **{p['commercial_name']}** (Mã: `{p['id']}`)")
+
+        # HIỂN THỊ TỰ ĐỘNG THÔNG TIN ĐÃ CHECK
+        col_in1, col_in2 = st.columns([1, 1])
+
+        with col_in1:
+            st.subheader("1. Thông tin Dự án CĐT Tuyên bố")
+            project_name = st.text_input("Tên thương mại dự án:", value=p["commercial_name"])
+            developer = st.text_input("Chủ đầu tư / Pháp nhân phát hành:", value=p["developer"])
+
+            p_col1, p_col2 = st.columns(2)
+            with p_col1:
+                province = st.text_input("Tỉnh / Thành phố:", value=p["province"])
+            with p_col2:
+                district = st.text_input("Quận / Huyện:", value=p["district"])
+
+            s_col1, s_col2 = st.columns(2)
+            with s_col1:
+                total_area_ha = st.number_input("Quy mô diện tích CĐT khai (ha):", value=float(p["total_area_ha"]), step=1.0)
+            with s_col2:
+                total_units = st.number_input("Tổng số sản phẩm (căn/nền):", value=int(p["total_units"] or 1000), step=50)
+
+            declared_price = st.number_input("Giá bán CĐT kỳ vọng / chào bán (triệu VNĐ/m²):", value=float(p["primary_price_m2"] or 35.0), step=0.5)
+
+        with col_in2:
+            st.subheader("2. Pháp lý & Vị trí Thực tế (Tự động Check)")
+            # Tìm index của legal_stage
+            stage_keys = list(LEGAL_STAGES_INFO.keys())
+            curr_stage_idx = stage_keys.index(p["legal_stage"]) if p["legal_stage"] in stage_keys else 0
+
+            legal_stage = st.selectbox(
+                "Nấc thang pháp lý CĐT tự khai:",
+                stage_keys,
+                index=curr_stage_idx,
+                format_func=lambda x: f"{x} - {LEGAL_STAGES_INFO[x]['name']}"
+            )
+
+            st.caption(f"ℹ️ {LEGAL_STAGES_INFO[legal_stage]['desc']}")
+
+            st.markdown("**Kiểm tra thực tế giấy tờ bổ trợ:**")
+            chk_land_fee = st.checkbox("Đã có Biên lai / Thông báo nộp TIỀN SỬ DỤNG ĐẤT?", value=bool(p["has_land_fee_clearance"]))
+            chk_gpxd = st.checkbox("Đã có Giấy phép Xây dựng (GPXD)?", value=bool(p["has_gpxd"]))
+            chk_sale = st.checkbox("Có Văn bản đủ điều kiện mở bán của Sở Xây dựng?", value=bool(p["eligible_for_sale"]))
+
+            st.markdown("**Tọa độ địa lý (Hệ thống tự định vị):**")
+            c_lat, c_lon = st.columns(2)
+            with c_lat:
+                lat = st.number_input("Vĩ độ (Latitude):", value=float(p["latitude"] or 10.75), format="%.4f")
+            with c_lon:
+                lon = st.number_input("Kinh độ (Longitude):", value=float(p["longitude"] or 106.55), format="%.4f")
+
+        st.markdown("---")
+        btn_run = st.button("🚀 BẮT ĐẦU ĐỐI CHUẨN ĐỘC LẬP & TẠO BÁO CÁO TÍN DỤNG", type="primary", use_container_width=True)
+
+    else:
+        st.warning(f"⚠️ Chưa tìm thấy dự án **'{project_input}'** trong CSDL nội bộ. Bạn có thể kiểm tra lại tên gõ đúng hoặc thêm nhanh dự án mới tại Tab **'📁 Cơ sở Dữ liệu Master'**.")
+        btn_run = False
+
 
     if btn_run:
         with st.spinner("Đang truy vấn cơ sở dữ liệu đối chuẩn và phân tích rủi ro..."):
