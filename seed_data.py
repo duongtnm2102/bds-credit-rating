@@ -228,6 +228,62 @@ def seed_all():
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, b)
 
+    # ==========================================
+    # 4. BẢNG GIÁ CHI TIẾT SẢN PHẨM & CHÍNH SÁCH BÁN HÀNG
+    # (Đúng theo mẫu Bảng 4 Giá văn phòng, TMDV, phân khu, chính sách thanh toán)
+    # ==========================================
+    cursor.execute("DELETE FROM project_detailed_pricing")
+
+    detailed_prices = [
+        # --- VINHOMES GREEN CITY HẬU NGHĨA (LA-DH-01) - CHUẨN THEO BẢNG 4 ---
+        ("LA-DH-01", "Văn phòng", "T4, T7", 90.0, 82.80, 90.0, 75.60, 84.96, "Tòa tháp văn phòng tiện ích"),
+        ("LA-DH-01", "Văn phòng", "T1–T3, T5, T6, T8", 116.0, 106.72, 116.0, 97.44, 109.50, "Cụm tháp văn phòng trung tâm"),
+        ("LA-DH-01", "Thương mại - dịch vụ", "T4, T7", 120.0, 110.40, 120.0, 100.80, 113.28, "Khối đế thương mại dịch vụ"),
+        ("LA-DH-01", "Thương mại - dịch vụ", "T1–T3, T5, T6, T8", 155.0, 142.60, 155.0, 130.20, 146.32, "Shophouse khối đế trục đại lộ"),
+        ("LA-DH-01", "Thương mại - dịch vụ", "T9", 206.0, 189.52, 206.0, 173.04, 194.46, "Tòa tháp biểu tượng trung tâm"),
+
+        # --- CÁT TƯỜNG PHÚ SINH (LA-DH-02 - ĐỐI THỦ ĐỨC HÒA) ---
+        ("LA-DH-02", "Thương mại - dịch vụ", "Kiot Chợ đêm & Phố đi bộ An Tây Hồ", 38.0, 34.96, 38.0, 31.92, 35.87, "Kiot phố thương mại du lịch"),
+        ("LA-DH-02", "Thương mại - dịch vụ", "Trục chính TC5 (Đường 20m)", 32.0, 29.44, 32.0, 26.88, 30.20, "Mặt tiền thương mại trục chính"),
+        ("LA-DH-02", "Nhà phố liền kế", "Phân khu Ngân Long (Đường 12m)", 24.0, 22.08, 24.0, 20.16, 22.65, "Nhà ở liền kề hoàn chỉnh"),
+
+        # --- WEST LAKES GOLF & VILLAS (LA-DH-03 - ĐỐI THỦ ĐỨC HÒA) ---
+        ("LA-DH-03", "Thương mại - dịch vụ", "Shophouse Phố Clubhouse", 55.0, 50.60, 55.0, 46.20, 51.92, "Shophouse phố ẩm thực sân golf"),
+        ("LA-DH-03", "Biệt thự nghỉ dưỡng", "Phân khu Western Villas", 38.0, 34.96, 38.0, 31.92, 35.87, "Biệt thự song lập sân golf"),
+        ("LA-DH-03", "Biệt thự nghỉ dưỡng", "Phân khu Lakeview Đơn Lập", 48.0, 44.16, 48.0, 40.32, 45.31, "Biệt thự đơn lập hướng hồ"),
+
+        # --- KĐT WATERPOINT (LA-BL-01 - BẾN LỨC) ---
+        ("LA-BL-01", "Văn phòng", "Tháp Hub TMDV Rivera", 78.0, 71.76, 78.0, 65.52, 73.65, "Văn phòng chia sẻ & thương mại"),
+        ("LA-BL-01", "Thương mại - dịch vụ", "Shophouse Trục DTM 36m", 115.0, 105.80, 115.0, 96.60, 108.56, "Shophouse trục đại lộ kết nối"),
+        ("LA-BL-01", "Thương mại - dịch vụ", "Shophouse Aqua Marina Bến du thuyền", 135.0, 124.20, 135.0, 113.40, 127.44, "Shophouse vịnh du thuyền"),
+        ("LA-BL-01", "Nhà phố sinh thái", "Phân khu Aquaria 1", 48.0, 44.16, 48.0, 40.32, 45.31, "Nhà phố vườn ven kênh"),
+
+        # --- KĐT ECO RETREAT LONG AN (LA-BL-03 - BẾN LỨC) ---
+        ("LA-BL-03", "Thương mại - dịch vụ", "Shophouse Khoáng nóng Phố đi bộ", 125.0, 115.00, 125.0, 105.00, 118.00, "Shophouse trị liệu Onsen"),
+        ("LA-BL-03", "Biệt thự khoáng nóng", "Phân khu Onsen Villas", 140.0, 128.80, 140.0, 117.60, 132.16, "Biệt thự khoáng nóng tự nhiên"),
+        ("LA-BL-03", "Nhà phố sinh thái", "Phân khu Central Park", 82.0, 75.44, 82.0, 68.88, 77.40, "Nhà phố liền kề sinh thái"),
+
+        # --- MIZUKI PARK (HCM-BC-01 - BÌNH CHÁNH, TP.HCM) ---
+        ("HCM-BC-01", "Văn phòng", "Khối đế TMDV Tòa MP9-MP10", 75.0, 69.00, 75.0, 63.00, 70.80, "Văn phòng dịch vụ cư dân"),
+        ("HCM-BC-01", "Thương mại - dịch vụ", "Shophouse Trục D9", 110.0, 101.20, 110.0, 92.40, 103.84, "Shophouse kinh doanh thương mại"),
+        ("HCM-BC-01", "Căn hộ cao cấp", "Flora Mizuki Block MP6-MP8", 52.0, 47.84, 52.0, 43.68, 49.09, "Căn hộ biệt lập chuẩn Nhật"),
+
+        # --- MAI ANH LUXURY TRẢNG BÀNG (TN-TB-01 - TÂY NINH) ---
+        ("TN-TB-01", "Thương mại - dịch vụ", "Shophouse Mặt tiền Quốc Lộ 22", 42.0, 38.64, 42.0, 35.28, 39.65, "Shophouse phố kinh doanh QL22"),
+        ("TN-TB-01", "Nhà phố liên kế", "Dãy nội khu LK1-LK3", 26.0, 23.92, 26.0, 21.84, 24.54, "Nhà phố liền kề thương mại"),
+
+        # --- GOLDEN CITY TÂY NINH (TN-TN-01 - TP. TÂY NINH) ---
+        ("TN-TN-01", "Thương mại - dịch vụ", "Shophouse Khối đế Tầng 1-2", 35.0, 32.20, 35.0, 29.40, 33.04, "Shophouse trung tâm TP"),
+        ("TN-TN-01", "Căn hộ Thương mại", "Tháp C, Tháp D", 22.0, 20.24, 22.0, 18.48, 20.77, "Căn hộ thương mại cao tầng")
+    ]
+
+    for dp in detailed_prices:
+        cursor.execute("""
+        INSERT INTO project_detailed_pricing (
+            project_id, category, building_group, initial_price, progress_price, loan_price, early_price, avg_price, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, dp)
+
     conn.commit()
     conn.close()
     print("Seed data loaded successfully!")

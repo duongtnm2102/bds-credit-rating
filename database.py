@@ -95,6 +95,23 @@ def init_db():
     )
     """)
 
+    # 5. Bảng Chi tiết Phân loại Sản phẩm, Nhóm tòa & Các Loại Giá (Detailed Product Pricing)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS project_detailed_pricing (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id TEXT NOT NULL,
+        category TEXT NOT NULL,
+        building_group TEXT NOT NULL,
+        initial_price REAL NOT NULL,
+        progress_price REAL NOT NULL,
+        loan_price REAL NOT NULL,
+        early_price REAL NOT NULL,
+        avg_price REAL NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (project_id) REFERENCES projects(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
 
